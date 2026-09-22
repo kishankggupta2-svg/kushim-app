@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kushim App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        input { user-select: text; -webkit-user-select: text; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background-color: #000000; color: #ffffff; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: rgba(0, 0, 0, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid #222222; z-index: 100; }
+        .brand-name { font-size: 1.6rem; font-weight: 800; background: linear-gradient(90deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; }
+        .header-history-btn { display: flex; align-items: center; gap: 8px; background: #111111; padding: 6px 15px; border-radius: 20px; border: 1px solid #333333; cursor: pointer; transition: 0.2s; }
+        .header-history-btn:active { transform: scale(0.95); background: #1a1a1a; }
+        .header-history-btn i { font-size: 1.1rem; color: #fbbf24; }
+        .header-history-btn span { font-size: 0.9rem; color: #fcd34d; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+
+        main { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 90px; }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .splash { position: fixed; inset: 0; background: #000000; z-index: 20000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; padding: 30px; }
+        .splash .spinner { width: 44px; height: 44px; }
+        .splash-text { color: #a3a3a3; font-size: 1rem; line-height: 1.5; }
+        .splash-btn { background: #fbbf24; color: #000; border: none; padding: 12px 30px; border-radius: 10px; font-size: 1.05rem; font-weight: bold; cursor: pointer; display: none; }
+
+        /* ---- Mining: ऊपर की पट्टी (बाएँ Wallet, दाएँ Total Supply) ---- */
+        .top-row { display: flex; gap: 10px; margin-bottom: 15px; }
+        .top-card { flex: 1; min-width: 0; background: #111111; border: 1px solid #333333; border-radius: 12px; padding: 10px 12px; }
+        .top-card.wallet { cursor: pointer; border-color: #7c4a1e; }
+        .top-card.wallet:active { transform: scale(0.97); }
+        .top-card .lbl { color: #a3a3a3; font-size: 0.75rem; display: flex; align-items: center; gap: 6px; }
+        .top-card .val { font-weight: 800; font-size: 1.05rem; color: #fbbf24; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .supply-bar { height: 6px; background: #222222; border-radius: 3px; margin-top: 7px; overflow: hidden; }
+        .supply-bar div { height: 100%; width: 0%; background: linear-gradient(90deg, #fbbf24, #f59e0b); transition: width 0.5s; }
+        .supply-sub { font-size: 0.7rem; color: #a3a3a3; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .mining-container { display: flex; flex-direction: column; align-items: center; position: relative; margin-top: 10px; }
+        .session-label { color: #a3a3a3; font-size: 0.85rem; }
+        .session-line { min-height: 20px; margin: 4px 0 10px; font-size: 0.85rem; color: #10b981; font-weight: bold; }
+        .balance-box { font-size: 2.6rem; font-weight: 800; margin-bottom: 14px; color: #ffffff; text-shadow: 0 0 10px rgba(255,255,255,0.1); }
+        .balance-box span { color: #fbbf24; font-size: 1.4rem; }
+        .timer-display { margin-bottom: 20px; font-size: 1.2rem; color: #a3a3a3; font-weight: bold; }
+        .boost-status { color: #fbbf24; font-weight: bold; display: none; margin-bottom: 15px; font-size: 0.9rem; text-align: center; line-height: 1.4; }
+
+        .big-coin-area { position: relative; width: 220px; height: 220px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; cursor: pointer; border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fcd34d, #fbbf24, #d97706); border: 8px solid #b45309; box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 0 10px 25px rgba(0,0,0,0.8), 0 0 40px rgba(251, 191, 36, 0.15); transition: transform 0.1s ease-out; }
+        .big-coin-area::before { content: ''; position: absolute; width: 85%; height: 85%; border-radius: 50%; border: 4px dashed #92400e; opacity: 0.5; pointer-events: none; }
+        .coin-text { font-size: 4rem; font-weight: 900; color: #111111; text-shadow: 2px 2px 0px #fbbf24, 4px 4px 5px rgba(0,0,0,0.8); z-index: 2; letter-spacing: 2px; }
+        .play-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0, 0, 0, 0.9); border: 2px solid #fbbf24; padding: 10px 30px; border-radius: 20px; color: #fbbf24; font-weight: bold; font-size: 1.4rem; z-index: 10; pointer-events: none; }
+        .big-coin-area.mining { animation: zoomPulse 1.5s infinite ease-in-out; box-shadow: inset 0 0 20px rgba(0,0,0,0.6), 0 15px 35px rgba(251, 191, 36, 0.4); }
+        .big-coin-area.fast-mining { animation: zoomPulseFast 0.4s infinite ease-in-out; box-shadow: 0 0 80px rgba(251, 191, 36, 0.6); }
+
+        @keyframes zoomPulse { 0% { transform: scale(1); } 50% { transform: scale(0.92); } 100% { transform: scale(1); } }
+        @keyframes zoomPulseFast { 0% { transform: scale(1); } 50% { transform: scale(0.85); } 100% { transform: scale(1); } }
+        .pop-token { position: absolute; font-size: 1.2rem; color: #fbbf24; font-weight: bold; z-index: 1; top: 50%; left: 50%; opacity: 1; pointer-events: none; animation: popOutCoin 1s ease-out forwards; }
+        @keyframes popOutCoin { 0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; } 100% { transform: translate(calc(-50% + var(--x-dir)), -180px) scale(1.2); opacity: 0; } }
+
+        .claim-btn { background: #fbbf24; color: #000000; width: 100%; padding: 15px; text-align: center; border-radius: 12px; font-size: 1.2rem; font-weight: bold; cursor: pointer; display: none; transition: 0.3s; border: none; }
+        .claim-btn.active { display: block; opacity: 1; pointer-events: auto; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); }
+
+        .boosters-section { margin-top: 25px; width: 100%; text-align: center; }
+        .boosters-section h4 { color: #a3a3a3; margin-bottom: 10px; font-weight: normal; }
+        .booster-row { display: flex; justify-content: space-between; gap: 10px; }
+        .boost-btn { flex: 1; background: #111111; border: 1px solid #333333; border-radius: 8px; padding: 10px 5px; text-align: center; font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .boost-btn span { color: #fbbf24; font-weight: bold; display: block; margin-top: 5px; font-size: 0.8rem; }
+        .boost-btn.locked { opacity: 0.3; }
+        .boost-btn.running { border-color: #fbbf24; background: rgba(251, 191, 36, 0.1); opacity: 1; color: white; pointer-events: none; }
+        .boost-btn.queued { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); opacity: 1; color: white; pointer-events: none; }
+        .boost-btn.queued span { color: #60a5fa; }
+        .boost-btn.finished { opacity: 0.4; pointer-events: none; }
+
+        .community-banner { margin-top: 15px; background: linear-gradient(135deg, #1e1b4b, #0a0a0a); border: 1px solid #8b5cf6; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: 0.2s; }
+        .community-banner:active { transform: scale(0.98); }
+        .community-banner .content { display: flex; align-items: center; gap: 12px; font-weight: bold; color: #ffffff; font-size: 1.05rem; }
+        .badge-join { background: #7c3aed; color: white; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+
+        .video-claim-box { margin-top: 12px; background: linear-gradient(135deg, #1e1e1e, #0a0a0a); border: 1px dashed #fbbf24; border-radius: 12px; padding: 15px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+        .video-claim-box .content { display: flex; align-items: center; gap: 10px; font-weight: bold; color: #ffffff; font-size: 1.1rem; }
+        .badge-soon { background: #b91c1c; color: white; padding: 5px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* ---- Wallet ---- */
+        .wallet-card { background: linear-gradient(135deg, #111111, #0a0a0a); border: 1px solid #222222; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .wallet-card.col { flex-direction: column; text-align: center; align-items: center; }
+        .wallet-card h3 { color: #a3a3a3; font-size: 0.9rem; font-weight: normal; margin-bottom: 5px; }
+        .wallet-bal { font-size: 2rem; font-weight: bold; color: #ffffff; }
+        .live-note { font-size: 0.85rem; color: #10b981; font-weight: bold; margin-top: 6px; }
+        .stat-row { width: 100%; display: flex; justify-content: space-between; border-top: 1px solid #222222; margin-top: 10px; padding-top: 10px; font-size: 0.95rem; color: #a3a3a3; }
+        .stat-row b { color: #ffffff; }
+        .stat-row.total { border-top: 1px solid #7c4a1e; font-size: 1.1rem; }
+        .stat-row.total b { color: #fbbf24; }
+
+        .coin-box { background: linear-gradient(145deg, #3b2412, #170d05 60%, #000000); border: 1px solid #7c4a1e; border-radius: 14px; padding: 18px; margin-bottom: 15px; text-align: center; box-shadow: 0 6px 18px rgba(0,0,0,0.6), inset 0 0 20px rgba(124, 74, 30, 0.25); }
+        .coin-box h3 { color: #d6a56a; font-size: 0.9rem; font-weight: normal; margin-bottom: 6px; }
+        .coin-bal { font-size: 2.2rem; font-weight: bold; color: #fbbf24; text-shadow: 0 0 15px rgba(251, 191, 36, 0.3); }
+
+        .withdraw-standalone { background: #111111; border: 1px solid #333333; border-radius: 12px; padding: 18px; margin-bottom: 15px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .withdraw-standalone:active { transform: scale(0.98); background: #1a1a1a; }
+        .withdraw-title { font-size: 1.3rem; font-weight: bold; color: #ffffff; display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .withdraw-soon { font-size: 0.9rem; color: #fbbf24; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; }
+
+        .daily-gifts-box { background: #111111; border: 1px solid #333333; border-radius: 12px; padding: 15px; margin-bottom: 15px; }
+        .daily-gifts-box h3 { color: #fcd34d; font-size: 1rem; margin-bottom: 10px; }
+        .gifts-scroll-container { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; scroll-behavior: smooth; }
+        .gifts-scroll-container::-webkit-scrollbar { display: none; }
+
+        .reward-day { min-width: 85px; background: #1a1a1a; border: 1px solid #333333; border-radius: 10px; padding: 10px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: 0.2s; }
+        .reward-day .day-label { color: #a3a3a3; font-size: 0.8rem; margin-bottom: 5px; }
+        .reward-day .reward-amt { color: #ffffff; font-weight: bold; font-size: 1.1rem; margin-bottom: 8px; }
+        .reward-day.locked { opacity: 0.5; pointer-events: none; }
+        .reward-day.locked .status-badge { color: #737373; font-size: 1.2rem; }
+        .reward-day.ready { border-color: #10b981; background: rgba(16, 185, 129, 0.1); cursor: pointer; box-shadow: 0 0 10px rgba(16, 185, 129, 0.2); }
+        .reward-day.ready:active { transform: scale(0.95); }
+        .reward-day.ready .status-badge { background: #10b981; color: white; padding: 4px 10px; border-radius: 5px; font-size: 0.75rem; font-weight: bold; }
+        .reward-day.claimed { border-color: #fbbf24; opacity: 0.8; pointer-events: none; }
+        .reward-day.claimed .status-badge { color: #fbbf24; font-size: 1.3rem; }
+        .reward-day.waiting { border-color: #3b82f6; opacity: 0.85; pointer-events: none; }
+        .reward-day.waiting .status-badge { color: #60a5fa; font-size: 0.75rem; font-weight: bold; background: rgba(59, 130, 246, 0.2); padding: 4px 6px; border-radius: 5px; }
+
+        .input-group { margin-bottom: 15px; width: 100%; text-align: left; }
+        .input-group label { display: block; color: #a3a3a3; font-size: 0.85rem; margin-bottom: 5px; }
+        .input-group input { width: 100%; padding: 12px; background: #000000; border: 1px solid #333333; border-radius: 8px; color: white; font-size: 1rem; outline: none; color-scheme: dark; }
+        .input-group input:focus { border-color: #fbbf24; }
+        .locked-display { display: flex; flex-direction: column; align-items: center; width: 100%; gap: 10px; padding: 10px 0; }
+        .locked-amt-text { font-size: 1.8rem; font-weight: bold; color: #10b981; }
+        .locked-date-text { font-size: 1rem; color: #a3a3a3; background: #1a1a1a; padding: 8px 15px; border-radius: 8px; border: 1px solid #333333; }
+
+        .action-btn { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; color: #ffffff; border: none; padding: 15px; border-radius: 10px; font-size: 1.1rem; font-weight: bold; margin-bottom: 15px; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .action-btn:active { transform: scale(0.97); }
+        .btn-tg-support { background: linear-gradient(135deg, #2AABEE, #1c88c3); }
+        .btn-tg-group { background: linear-gradient(135deg, #8b5cf6, #6d28d9); }
+        .btn-tg-bot { background: linear-gradient(135deg, #0ea5a4, #0f766e); }
+        .btn-system { background: #1a1a1a; border: 1px dashed #fbbf24; justify-content: space-between; }
+        .btn-invite { background: linear-gradient(135deg, #10b981, #059669); }
+        .btn-copy { background: linear-gradient(135deg, #f59e0b, #d97706); }
+        .btn-save { background: #fbbf24; color: #000000; box-shadow: 0 0 15px rgba(251, 191, 36, 0.4); margin-bottom: 0; }
+        .btn-secondary { background: #262626; border: 1px solid #444444; margin-bottom: 10px; font-size: 1rem; }
+
+        .refer-stats { background: #111111; border-radius: 10px; padding: 15px; margin-bottom: 20px; text-align: center; border: 1px solid #333333; }
+        .refer-stats h2 { color: #fbbf24; margin: 10px 0; font-size: 2rem; }
+        .refer-note { color: #737373; font-size: 0.85rem; text-align: center; margin-bottom: 15px; line-height: 1.4; }
+
+        .lb-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-top: 1px solid #222222; font-size: 0.95rem; }
+        .lb-row:first-of-type { border-top: none; }
+        .lb-row.me { color: #fbbf24; font-weight: bold; }
+        .lb-rank { width: 34px; color: #a3a3a3; }
+        .lb-name { flex: 1; text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .lb-total { color: #fbbf24; font-weight: bold; }
+
+        /* ---- Profile ---- */
+        .avatar-wrap { text-align: center; margin-bottom: 20px; position: relative; width: 100px; margin-left: auto; margin-right: auto; }
+        .avatar { width: 100px; height: 100px; border-radius: 50%; border: 3px solid #fbbf24; object-fit: cover; display: none; }
+        .avatar-initial { width: 100px; height: 100px; border-radius: 50%; border: 3px solid #fbbf24; background: #111111; color: #fbbf24; font-size: 2.6rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+        .avatar-cam { position: absolute; bottom: 0; right: -6px; background: #fbbf24; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 2px solid #000000; }
+        .avatar-cam i { color: #000000; font-size: 13px; }
+        .section-box { background: #111111; border: 1px solid #333333; border-radius: 12px; padding: 15px; margin-top: 20px; }
+        .section-box h3 { color: #fcd34d; font-size: 1rem; margin-bottom: 6px; }
+        .section-note { color: #737373; font-size: 0.82rem; line-height: 1.4; margin-bottom: 14px; }
+        .task-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid #222222; font-size: 0.95rem; color: #e5e5e5; }
+        .task-row:first-child { border-top: none; }
+        .verify-ok { color: #10b981; font-weight: bold; margin-bottom: 10px; line-height: 1.4; }
+        .verify-wait { color: #fbbf24; font-weight: bold; margin-bottom: 12px; line-height: 1.4; }
+
+        .bottom-nav { position: fixed; bottom: 0; width: 100%; background: rgba(0, 0, 0, 0.95); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid #222222; padding-bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 100; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #737373; font-size: 0.75rem; font-weight: 600; width: 20%; cursor: pointer; }
+        .nav-item i { font-size: 1.4rem; margin-bottom: 5px; transition: color 0.2s; }
+        .nav-item.active { color: #fbbf24; }
+
+        .toast-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: none; align-items: center; justify-content: center; z-index: 9999; }
+        .toast-box { background: #111111; border: 1px solid #fbbf24; padding: 20px 40px; border-radius: 12px; display: flex; align-items: center; gap: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.8); animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes popIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .spinner { width: 30px; height: 30px; border: 4px solid #333333; border-top: 4px solid #fbbf24; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .check-icon { color: #10b981; font-size: 32px; display: none; }
+        .toast-text { color: white; font-size: 1.3rem; font-weight: bold; letter-spacing: 0.5px; }
+
+        .custom-alert-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); display: none; align-items: center; justify-content: center; z-index: 10000; }
+        .custom-alert-box { background: #1a1a1a; border: 2px solid #333333; border-radius: 15px; padding: 25px; width: 80%; max-width: 350px; text-align: center; animation: slideDownFade 0.3s ease forwards; }
+        @keyframes slideDownFade { 0% { transform: translateY(-20px); opacity: 0; } 100% { transform: translateY(0); opacity: 1; } }
+        .custom-alert-icon { font-size: 3rem; color: #fbbf24; margin-bottom: 15px; }
+        .custom-alert-title { color: #ffffff; font-size: 1.3rem; font-weight: bold; margin-bottom: 10px; }
+        .custom-alert-msg { color: #a3a3a3; font-size: 1rem; margin-bottom: 20px; line-height: 1.4; word-break: break-word; }
+        .custom-alert-btn { background: #333333; color: #ffffff; border: none; padding: 12px 30px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; }
+
+        .video-modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.96); display: none; align-items: center; justify-content: center; z-index: 10002; padding: 20px; }
+        .video-box { width: 100%; max-width: 380px; background: #111111; border: 1px solid #fbbf24; border-radius: 14px; padding: 15px; text-align: center; }
+        .video-box video { width: 100%; max-height: 50vh; border-radius: 10px; background: #000000; }
+        .video-title { color: #fcd34d; font-weight: bold; margin-bottom: 10px; }
+        .video-progress { height: 8px; background: #222222; border-radius: 4px; margin: 12px 0 6px; overflow: hidden; }
+        .video-progress div { height: 100%; width: 0%; background: #10b981; transition: width 0.25s linear; }
+        .video-count { color: #a3a3a3; font-size: 0.9rem; margin-bottom: 12px; }
+
+        .history-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000000; z-index: 10001; display: none; flex-direction: column; animation: slideUp 0.3s ease-out; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .history-header { padding: 20px; display: flex; justify-content: space-between; align-items: center; background: #111111; border-bottom: 1px solid #222222; }
+        .history-header h2 { font-size: 1.4rem; color: #fbbf24; display: flex; align-items: center; gap: 10px; }
+        .close-history { font-size: 1.8rem; color: #a3a3a3; cursor: pointer; transition: 0.2s; }
+        .history-list { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 30px; }
+        .history-item { background: #111111; border: 1px solid #333333; padding: 15px; border-radius: 12px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .history-item .date { color: #a3a3a3; font-size: 0.95rem; font-weight: bold; }
+        .history-item .status { font-weight: bold; font-size: 0.9rem; margin-top: 5px; display: flex; align-items: center; gap: 6px; }
+        .history-item .amount { font-size: 1.3rem; font-weight: 900; color: #fbbf24; }
+    </style>
+</head>
+<body oncontextmenu="return false;" ondragstart="return false;" ondrop="return false;">
+
+    <div id="splash" class="splash">
+        <div id="splashSpinner" class="spinner"></div>
+        <div id="splashText" class="splash-text">Connecting to Kushim...</div>
+        <button id="splashBtn" class="splash-btn" onclick="location.reload()">Try Again</button>
+    </div>
+
+    <div id="toastOverlay" class="toast-overlay">
+        <div class="toast-box">
+            <div id="toastSpinner" class="spinner"></div>
+            <i id="toastCheck" class="fa-solid fa-circle-check check-icon"></i>
+            <span id="toastText">Please wait...</span>
+        </div>
+    </div>
+
+    <div id="customAlert" class="custom-alert-overlay">
+        <div class="custom-alert-box">
+            <i id="alertIcon" class="fa-solid fa-bell custom-alert-icon"></i>
+            <div id="alertTitle" class="custom-alert-title">Notification</div>
+            <div id="alertMsg" class="custom-alert-msg"></div>
+            <button class="custom-alert-btn" onclick="closeCustomAlert()">OK</button>
+        </div>
+    </div>
+
+    <div id="videoModal" class="video-modal">
+        <div class="video-box">
+            <div class="video-title" id="videoTitle">Watch to unlock Boost</div>
+            <video id="boostVideo" playsinline webkit-playsinline preload="auto"></video>
+            <div class="video-progress"><div id="videoBar"></div></div>
+            <div class="video-count" id="videoCount">Watch 15 seconds</div>
+            <button class="custom-alert-btn" onclick="cancelVideo()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="historyModal" class="history-modal">
+        <div class="history-header">
+            <h2><i class="fa-solid fa-clock-rotate-left"></i> History</h2>
+            <i class="fa-solid fa-xmark close-history" onclick="closeHistory()"></i>
+        </div>
+        <div class="history-list" id="historyList"></div>
+    </div>
+
+    <header>
+        <div class="brand-name">Kushim</div>
+        <div class="header-history-btn" onclick="openHistory()">
+            <i class="fa-solid fa-clock-rotate-left"></i><span>History</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- 1. MINING TAB -->
+        <div id="tab-mining" class="tab-content active">
+            <div class="top-row">
+                <div class="top-card wallet" onclick="switchTab('wallet', document.getElementById('navWallet'))">
+                    <div class="lbl"><i class="fa-solid fa-wallet" style="color:#fbbf24;"></i> My Wallet</div>
+                    <div class="val" id="chipWallet">0.0000 KSH</div>
+                </div>
+                <div class="top-card">
+                    <div class="lbl"><i class="fa-solid fa-chart-pie" style="color:#fbbf24;"></i> Total Supply</div>
+                    <div class="val" id="chipSupply">0 KSH</div>
+                    <div class="supply-bar"><div id="supplyBar"></div></div>
+                    <div class="supply-sub" id="supplySub">of 1,000,000,000 mined</div>
+                </div>
+            </div>
+
+            <div class="mining-container">
+                <div class="session-label">Mined this session</div>
+                <div class="balance-box" id="balance">0.0000 <span>KSH</span></div>
+                <div class="session-line" id="sessionLine"></div>
+                <div class="timer-display" id="timer">Tap Coin to Start</div>
+                <div class="boost-status" id="boostStatus"></div>
+
+                <div class="big-coin-area" id="coinArea" onclick="startMining()">
+                    <div class="play-overlay" id="playOverlay">PLAY</div>
+                    <div class="coin-text">KSH</div>
+                </div>
+
+                <div class="claim-btn" id="claimBtn" onclick="claimTokens()">CLAIM TOKENS</div>
+            </div>
+
+            <div class="boosters-section">
+                <h4>Boost Mining (watch a short video, in order: 2x → 3x → 4x)</h4>
+                <div class="booster-row">
+                    <div class="boost-btn locked" id="btnBoost1" onclick="activateBoost(1)">2x Boost<br><span>--</span></div>
+                    <div class="boost-btn locked" id="btnBoost2" onclick="activateBoost(2)">3x Boost<br><span>--</span></div>
+                    <div class="boost-btn locked" id="btnBoost3" onclick="activateBoost(3)">4x Boost<br><span>--</span></div>
+                </div>
+            </div>
+
+            <div class="community-banner" onclick="openCommunityLink()">
+                <div class="content"><i class="fa-brands fa-telegram" style="color:#8b5cf6; font-size: 1.4rem;"></i> Join Official Community</div>
+                <div class="badge-join">Join Now</div>
+            </div>
+
+            <div class="video-claim-box" onclick="claimVideoBox()">
+                <div class="content"><i class="fa-solid fa-play" style="color:#fbbf24;"></i> Video Claim</div>
+                <div class="badge-join" id="videoClaimBadge">+20 KSH</div>
+            </div>
+
+            <div class="video-claim-box" onclick="showCustomAlert('Instagram Video', 'Watch Instagram videos and earn rewards. Coming soon!', 'fa-brands fa-instagram')">
+                <div class="content"><i class="fa-brands fa-instagram" style="color:#fbbf24;"></i> Instagram Video <span style="color:#fbbf24;">· 100 KSH</span></div>
+                <div class="badge-soon">Coming Soon</div>
+            </div>
+
+            <div class="video-claim-box" onclick="showCustomAlert('Facebook Video', 'Watch Facebook videos and earn rewards. Coming soon!', 'fa-brands fa-facebook')">
+                <div class="content"><i class="fa-brands fa-facebook" style="color:#fbbf24;"></i> Facebook Video <span style="color:#fbbf24;">· 100 KSH</span></div>
+                <div class="badge-soon">Coming Soon</div>
+            </div>
+
+            <div class="video-claim-box" onclick="showCustomAlert('YouTube Video', 'Watch YouTube videos and earn rewards. Coming soon!', 'fa-brands fa-youtube')">
+                <div class="content"><i class="fa-brands fa-youtube" style="color:#fbbf24;"></i> YouTube Video <span style="color:#fbbf24;">· 100 KSH</span></div>
+                <div class="badge-soon">Coming Soon</div>
+            </div>
+
+            <div class="video-claim-box" onclick="showCustomAlert('Twitter Video', 'Watch Twitter / X videos and earn rewards. Coming soon!', 'fa-brands fa-x-twitter')">
+                <div class="content"><i class="fa-brands fa-x-twitter" style="color:#fbbf24;"></i> Twitter Video <span style="color:#fbbf24;">· 100 KSH</span></div>
+                <div class="badge-soon">Coming Soon</div>
+            </div>
+
+            <div class="video-claim-box" onclick="showCustomAlert('Other Video', 'More video partners are coming soon!', 'fa-solid fa-video')">
+                <div class="content"><i class="fa-solid fa-video" style="color:#fbbf24;"></i> Other Video <span style="color:#fbbf24;">· 100 KSH</span></div>
+                <div class="badge-soon">Coming Soon</div>
+            </div>
+        </div>
+
+        <!-- 2. WALLET TAB -->
+        <div id="tab-wallet" class="tab-content">
+            <div class="wallet-card col">
+                <h3>My Kushim Tokens (KSH)</h3>
+                <div class="wallet-bal" id="walletKSH">0.0000 KSH</div>
+                <div class="live-note" id="walletLive"></div>
+                <div class="stat-row"><span>Claimed balance</span><b id="walletClaimed">0.0000 KSH</b></div>
+                <div class="stat-row"><span>Locked</span><b id="walletLocked">0 KSH</b></div>
+            </div>
+
+            <div class="daily-gifts-box">
+                <h3><i class="fa-solid fa-gift"></i> Daily Login Gifts (Day 1 to 30)</h3>
+                <div class="section-note" id="streakNote" style="margin-bottom:8px;"></div>
+                <div class="gifts-scroll-container" id="dailyGiftsContainer"></div>
+            </div>
+
+            <div class="coin-box">
+                <h3>My Kushim Coins (1000 KSH = 1 Coin)</h3>
+                <div class="coin-bal" id="walletCoin">0.0000 COIN</div>
+            </div>
+
+            <div class="wallet-card col">
+                <h3>My Earnings</h3>
+                <div class="stat-row" style="border-top:none; margin-top:0; padding-top:0;"><span>Referrals (friends)</span><b id="bdRefCount">0</b></div>
+                <div class="stat-row"><span>Referral earnings</span><b id="bdRef">0 KSH</b></div>
+                <div class="stat-row"><span>Daily gift earnings</span><b id="bdGift">0 KSH</b></div>
+                <div class="stat-row"><span>Video Claim earnings</span><b id="bdVideo">0 KSH</b></div>
+                <div class="stat-row"><span>Mining earnings</span><b id="bdMine">0 KSH</b></div>
+                <div class="stat-row total"><span>Total earned</span><b id="bdTotal">0 KSH</b></div>
+            </div>
+
+            <div class="section-box" style="margin-top:0;">
+                <h3><i class="fa-solid fa-trophy"></i> Achievements</h3>
+                <div id="achList"></div>
+            </div>
+
+            <div class="withdraw-standalone" onclick="showCustomAlert('Withdrawal', 'Withdrawals will be enabled after mainnet launch.', 'fa-solid fa-money-bill-transfer')">
+                <div class="withdraw-title"><i class="fa-solid fa-money-bill-wave"></i> Withdrawal</div>
+                <div class="withdraw-soon">Coming Soon</div>
+            </div>
+
+            <div class="wallet-card col">
+                <h3>Lock Tokens</h3>
+                <div id="lockInputBox" style="width: 100%; margin-top: 10px;">
+                    <div class="input-group">
+                        <label>Enter KSH amount to lock (whole number, from claimed balance):</label>
+                        <input type="number" id="lockAmount" placeholder="Amount (e.g. 5000)" inputmode="numeric">
+                    </div>
+                    <div class="input-group">
+                        <label>Select unlock date:</label>
+                        <input type="date" id="lockDate">
+                    </div>
+                    <div class="action-btn btn-save" onclick="lockTokens()">Lock Tokens</div>
+                </div>
+                <div id="lockedStatusBox" class="locked-display" style="display: none;">
+                    <div class="locked-amt-text"><i class="fa-solid fa-lock"></i> <span id="displayLockedKSH">0</span> KSH</div>
+                    <div class="locked-date-text">Unlocks on: <span id="displayUnlockDate" style="color: white; font-weight: bold;">--</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. SUPPORT TAB -->
+        <div id="tab-support" class="tab-content" style="padding-top: 20px;">
+            <div style="text-align:center; margin-bottom: 30px;"><i class="fa-solid fa-headset fa-4x" style="color:#333333;"></i></div>
+            <div class="action-btn btn-tg-bot" onclick="openBot()"><i class="fa-solid fa-robot fa-lg"></i> Telegram Bot</div>
+            <div class="action-btn btn-tg-group" onclick="openCommunityLink()"><i class="fa-brands fa-telegram fa-lg"></i> Telegram Group (Join Community)</div>
+            <div class="action-btn btn-tg-support" onclick="openSupport()"><i class="fa-brands fa-telegram fa-lg"></i> Telegram Support</div>
+            <div class="action-btn btn-system" onclick="showCustomAlert('Support System', 'Our full support system with tickets is coming soon.', 'fa-solid fa-headset')">
+                <span><i class="fa-solid fa-life-ring"></i> Support System</span><span class="badge-soon">Coming Soon</span>
+            </div>
+
+            <div class="section-box">
+                <h3><i class="fa-solid fa-video"></i> Video Claim Tasks</h3>
+                <div class="section-note">All video tasks below are coming soon.</div>
+                <div class="task-row"><span><i class="fa-brands fa-instagram"></i> Instagram Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-brands fa-facebook"></i> Facebook Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-brands fa-youtube"></i> YouTube Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-brands fa-x-twitter"></i> Twitter / X Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-brands fa-telegram"></i> Telegram Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-brands fa-tiktok"></i> TikTok Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-brands fa-snapchat"></i> Snapchat Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-solid fa-handshake"></i> Partner Ad Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-solid fa-star"></i> Sponsor Video</span><span class="badge-soon">Coming Soon</span></div>
+                <div class="task-row"><span><i class="fa-solid fa-gift"></i> Bonus Video Task</span><span class="badge-soon">Coming Soon</span></div>
+            </div>
+        </div>
+
+        <!-- 4. REFER TAB -->
+        <div id="tab-refer" class="tab-content">
+            <div class="refer-stats">
+                <h3>Total Invited Friends</h3><h2 id="refTabCount">0</h2>
+                <div class="stat-row" style="border:none; justify-content:center; gap: 10px;"><span>Earned Bonus:</span> <span style="color:#fbbf24; font-weight:bold;"><span id="refEarnedKSH">0</span> KSH</span></div>
+            </div>
+            <div class="refer-note" id="refNote">You earn a bonus when a friend opens the app using your invite link.</div>
+            <div class="action-btn btn-invite" onclick="sendNativeInvite()"><i class="fa-solid fa-share-nodes fa-lg"></i> Share Invite</div>
+            <div class="action-btn btn-copy" onclick="copyInviteLink()"><i class="fa-solid fa-copy fa-lg"></i> Copy Link</div>
+
+            <div class="section-box" style="margin-top: 5px;">
+                <h3><i class="fa-solid fa-user-group"></i> My Referrals</h3>
+                <div id="referList" style="margin-top:8px;"><div style="color:#737373; text-align:center; padding:12px;">Loading...</div></div>
+            </div>
+
+            <div class="section-box" style="margin-top: 5px;">
+                <h3><i class="fa-solid fa-trophy"></i> Top Miners</h3>
+                <div id="lbList" style="margin-top:8px;"><div style="color:#737373; text-align:center; padding:12px;">Loading...</div></div>
+                <div id="lbMe" class="lb-row me" style="display:none; border-top:1px solid #7c4a1e; margin-top:6px;"></div>
+            </div>
+        </div>
+
+        <!-- 5. PROFILE TAB -->
+        <div id="tab-profile" class="tab-content">
+            <div class="avatar-wrap">
+                <img id="profilePic" class="avatar" alt="">
+                <div id="profileInitial" class="avatar-initial">K</div>
+                <div class="avatar-cam" onclick="document.getElementById('picUpload').click()"><i class="fa-solid fa-camera"></i></div>
+                <input type="file" id="picUpload" accept="image/*" style="display:none;" onchange="uploadPhoto(event)">
+            </div>
+            <div style="text-align:center; color:#737373; font-size:0.8rem; margin-bottom:8px;"><i class="fa-solid fa-shield-halved" style="color:#10b981;"></i> Telegram ID <span id="profileTgId">--</span> · Account secured</div>
+            <div id="profileRank" style="text-align:center; color:#fbbf24; font-weight:bold; font-size:0.9rem; margin-bottom:15px;"></div>
+
+            <div class="input-group"><label>First Name</label><input type="text" id="profileName" placeholder="Enter your name" maxlength="40"></div>
+            <div class="input-group"><label>Surname</label><input type="text" id="profileSurname" placeholder="Enter your surname" maxlength="40"></div>
+            <div class="input-group"><label>Mobile Number (optional)</label><input type="tel" id="profileMobile" placeholder="+91XXXXXXXXXX" maxlength="16"></div>
+            <div class="action-btn btn-save" onclick="saveProfile()">Save Details</div>
+
+            <div class="section-box">
+                <h3><i class="fa-solid fa-shield-halved"></i> Login for the Kushim app</h3>
+                <div id="loginBox"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('mining', this)"><i class="fa-solid fa-hammer"></i><span>Mining</span></div>
+        <div class="nav-item" id="navWallet" onclick="switchTab('wallet', this)"><i class="fa-solid fa-wallet"></i><span>Wallet</span></div>
+        <div class="nav-item" onclick="switchTab('support', this)"><i class="fa-solid fa-headset"></i><span>Support</span></div>
+        <div class="nav-item" onclick="switchTab('refer', this)"><i class="fa-solid fa-users"></i><span>Refer</span></div>
+        <div class="nav-item" onclick="switchTab('profile', this)"><i class="fa-solid fa-user"></i><span>Profile</span></div>
+    </nav>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import {
+            getAuth, setPersistence, inMemoryPersistence, signInWithCustomToken,
+            EmailAuthProvider, linkWithCredential, sendEmailVerification, sendPasswordResetEmail
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-functions.js";
+
+        // ================= सेटिंग (यहाँ अपनी जानकारी भरें) =================
+        const BOT_USERNAME = "";        // BotFather वाला username, @ के बिना। जैसे "KushimBot"
+        const APP_SHORT_NAME = "";      // Mini App का short name (खाली छोड़ सकते हैं)
+        const SUPPORT_USERNAME = "";    // सपोर्ट का Telegram username, @ के बिना
+        const COMMUNITY_LINK = "https://t.me/+td-e8qbpsMJkMjc9";
+        // ❤️ यहां अपने वीडियो का लिंक डालना है — यह एक ही वीडियो अब चार जगह चलता है:
+        // माइनिंग शुरू करते समय, Boost लगाते समय, Daily Reward Claim करते समय, और Video Claim में।
+        const VIDEO_URL = "";           // ❤️ अपने वीडियो की सीधी .mp4 लिंक (https वाला) यहां डालें
+        const ADSGRAM_BLOCK_ID = "";    // ❤️ (वैकल्पिक) असली विज्ञापन चाहिए तो यहां Adsgram का Block ID डालें; भरा हो तो वही चलेगा, VIDEO_URL की ज़रूरत नहीं
+        // ===================================================================
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCGjqGmCopiPkj3CfHa9nwI8wp0-ri9XSw",
+            authDomain: "kushim-app.firebaseapp.com",
+            projectId: "kushim-app",
+            storageBucket: "kushim-app.firebasestorage.app",
+            messagingSenderId: "217431061836",
+            appId: "1:217431061836:web:8bbd2e8d331edc780d0be9",
+            measurementId: "G-SKX6J8FPPR"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const functions = getFunctions(app, "asia-south1");
+        const tg = window.Telegram.WebApp;
+
+        // कोई भी local storage नहीं: सारा डेटा सिर्फ़ Firebase पर, लॉगिन हर बार Telegram से
+        let S = null;
+        let offset = 0;
+        let profileFilled = false;
+        let lastBoostKey = {};
+        let lastLoginKey = null;
+        let videoCancel = null;
+        let lastLbAt = 0;
+
+        const $ = (id) => document.getElementById(id);
+        const serverNow = () => Date.now() + offset;
+        const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+        const clamp01 = (x) => Math.min(Math.max(x, 0), 1);
+        const pad = (n) => (n < 10 ? '0' + n : '' + n);
+        const fmt4 = (n) => n.toFixed(4);
+        const fmtInt = (n) => Math.round(n).toLocaleString('en-IN');
+        const fmtDate = (ms) => new Date(ms).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const fmtTime = (ms) => new Date(ms).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        function hms(ms) {
+            const t = Math.max(0, Math.floor(ms / 1000));
+            return pad(Math.floor(t / 3600)) + ':' + pad(Math.floor((t % 3600) / 60)) + ':' + pad(t % 60);
+        }
+
+        async function call(name, data) {
+            const r = await httpsCallable(functions, name)(data || {});
+            return r.data;
+        }
+
+        const AUTH_ERRORS = {
+            'auth/email-already-in-use': 'This email is already used by another account.',
+            'auth/credential-already-in-use': 'This email is already used by another account.',
+            'auth/invalid-email': 'Enter a valid email address.',
+            'auth/weak-password': 'Password is too weak. Use at least 8 characters.',
+            'auth/provider-already-linked': 'A login is already created for this account.',
+            'auth/too-many-requests': 'Too many attempts. Please try again after some time.',
+            'auth/operation-not-allowed': 'Email login is not enabled yet. Please contact support.',
+            'auth/network-request-failed': 'Network problem. Check your internet and try again.'
+        };
+        function cleanErr(e) {
+            if (e && e.code && AUTH_ERRORS[e.code]) return AUTH_ERRORS[e.code];
+            const m = (e && e.message) ? String(e.message) : 'Something went wrong.';
+            return m.replace(/^functions\//, '').replace(/^Firebase: /, '');
+        }
+        const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+        // ---------- UI helpers ----------
+        function showCustomAlert(title, message, iconClass) {
+            $('alertTitle').innerText = title;
+            $('alertMsg').innerText = message;
+            $('alertIcon').className = (iconClass || 'fa-solid fa-bell') + ' custom-alert-icon';
+            $('customAlert').style.display = 'flex';
+        }
+        function closeCustomAlert() { $('customAlert').style.display = 'none'; }
+
+        async function busy(text, work, okText) {
+            $('toastSpinner').style.display = 'block';
+            $('toastCheck').style.display = 'none';
+            $('toastText').innerText = text;
+            $('toastOverlay').style.display = 'flex';
+            try {
+                const r = await work();
+                if (okText) {
+                    $('toastSpinner').style.display = 'none';
+                    $('toastCheck').style.display = 'block';
+                    $('toastText').innerText = okText;
+                    await sleep(700);
+                }
+                $('toastOverlay').style.display = 'none';
+                return r;
+            } catch (e) {
+                $('toastOverlay').style.display = 'none';
+                showCustomAlert('Error', cleanErr(e), 'fa-solid fa-triangle-exclamation');
+                return null;
+            }
+        }
+
+        function switchTab(tabId, element) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            $('tab-' + tabId).classList.add('active');
+            element.classList.add('active');
+            if (tabId === 'refer') { loadLeaderboard(); loadReferralList(); }
+            if (tabId === 'profile') loadMyRank();
+        }
+
+        function popTokenFromCoin() {
+            const token = document.createElement('div');
+            token.classList.add('pop-token');
+            token.innerHTML = '+ KSH';
+            const randomX = (Math.random() > 0.5 ? 1 : -1) * Math.floor(Math.random() * 80 + 30) + 'px';
+            token.style.setProperty('--x-dir', randomX);
+            $('coinArea').appendChild(token);
+            setTimeout(() => token.remove(), 1000);
+        }
+
+        // ---------- स्थिति से निकले हिसाब ----------
+        function sessionAccrued(now) {
+            const m = S.mining;
+            if (!m) return 0;
+            const cfg = S.config;
+            let accrued = cfg.baseReward * clamp01((now - m.startMs) / (m.endMs - m.startMs));
+            for (const b of m.boosts) {
+                accrued += cfg.boostExtras[b.tier - 1] * clamp01((now - b.startMs) / (b.endMs - b.startMs));
+            }
+            return accrued;
+        }
+
+        // पूरा सेशन (24 घंटे) खत्म होने पर कुल कितना मिलेगा, जो Boost लग चुके हैं उन्हें जोड़कर
+        function sessionTotal() {
+            const m = S.mining;
+            if (!m) return 0;
+            const cfg = S.config;
+            let total = cfg.baseReward;
+            for (const b of m.boosts) total += cfg.boostExtras[b.tier - 1];
+            return total;
+        }
+
+        // हर Boost की स्थिति: running / queued (पिछले के बाद शुरू होगा) / finished / ready / locked
+        function boostInfo(now) {
+            const m = S.mining;
+            const cfg = S.config;
+            const boosts = m ? m.boosts : [];
+            const out = {};
+            for (let t = 1; t <= cfg.boostMultipliers.length; t++) {
+                const b = boosts.find(x => x.tier === t);
+                if (b) {
+                    if (now < b.startMs) out[t] = { st: 'queued', startsIn: b.startMs - now };
+                    else if (now < b.endMs) out[t] = { st: 'running', left: b.endMs - now };
+                    else out[t] = { st: 'finished' };
+                    continue;
+                }
+                let reason = '';
+                if (!m) reason = 'Start mining first.';
+                else if (now >= m.endMs) reason = 'Mining is finished. Claim your tokens first.';
+                else if (t !== boosts.length + 1) reason = 'Activate boosts in order: 2x, then 3x, then 4x.';
+                else {
+                    const last = boosts[boosts.length - 1];
+                    const endMs = (last && last.endMs > now) ? last.endMs : now + cfg.boostMs;
+                    if (endMs > m.endMs) reason = 'Not enough mining time left for a full 4 hour boost.';
+                }
+                out[t] = reason ? { st: 'locked', reason } : { st: 'ready' };
+            }
+            return out;
+        }
+
+        // ---------- हर सेकंड की स्क्रीन ----------
+        function tick() {
+            if (!S) return;
+            const now = serverNow();
+            const m = S.mining;
+            const phase = !m ? 'idle' : (now >= m.endMs ? 'ready' : 'running');
+            const accrued = sessionAccrued(now);
+            const bi = boostInfo(now);
+            const boostRunning = Object.values(bi).some(x => x.st === 'running');
+            const live = S.balance + accrued;
+
+            // Mining स्क्रीन: सेशन की कमाई, Wallet चिप, Total Supply
+            $('balance').innerHTML = fmt4(accrued) + ' <span>KSH</span>';
+            $('sessionLine').innerText = m ? 'Session total: ' + fmt4(sessionTotal()) + ' KSH' : '';
+            $('chipWallet').innerText = fmt4(live) + ' KSH';
+
+            const sup = S.supply;
+            const pct = sup.total / sup.max * 100;
+            $('chipSupply').innerText = fmtInt(sup.total) + ' KSH';
+            $('supplyBar').style.width = (sup.total > 0 ? Math.max(pct, 1) : 0) + '%';
+            $('supplySub').innerText = 'of ' + fmtInt(sup.max) + ' mined';
+
+            // Wallet स्क्रीन: माइनिंग बढ़ते क्रम में
+            $('walletKSH').innerText = fmt4(live) + ' KSH';
+            $('walletLive').innerText = m ? (phase === 'running' ? '⛏ Mining live: +' + fmt4(accrued) + ' KSH' : 'Mining finished: +' + fmt4(accrued) + ' KSH (claim to secure)') : '';
+            $('walletClaimed').innerText = fmt4(S.balance) + ' KSH';
+            $('walletLocked').innerText = fmtInt(S.locked) + ' KSH';
+            $('walletCoin').innerText = (live / 1000).toFixed(4) + ' COIN';
+
+            // टाइमर (24 घंटे), सिक्का, Claim (सिर्फ़ 24 घंटे पूरे होने पर)
+            const coin = $('coinArea');
+            if (phase === 'idle') {
+                $('timer').innerText = 'Tap Coin to Start';
+                coin.classList.remove('mining', 'fast-mining');
+                $('playOverlay').style.display = 'block';
+                $('claimBtn').classList.remove('active');
+            } else if (phase === 'running') {
+                $('timer').innerText = 'Mining Active: ' + hms(m.endMs - now);
+                coin.classList.add('mining');
+                coin.classList.toggle('fast-mining', boostRunning);
+                $('playOverlay').style.display = 'none';
+                $('claimBtn').classList.remove('active');
+                popTokenFromCoin();
+                if (boostRunning) { setTimeout(popTokenFromCoin, 350); setTimeout(popTokenFromCoin, 700); }
+            } else {
+                $('timer').innerText = 'Mining Finished!';
+                coin.classList.remove('mining', 'fast-mining');
+                $('playOverlay').style.display = 'none';
+                $('claimBtn').classList.add('active');
+            }
+
+            // Boost बटन (2x, 3x, 4x)
+            for (let t = 1; t <= S.config.boostMultipliers.length; t++) {
+                const info = bi[t];
+                const btn = $('btnBoost' + t);
+                const mult = S.config.boostMultipliers[t - 1];
+                const extra = S.config.boostExtras[t - 1];
+                let html, cls;
+                if (info.st === 'running') { html = mult + 'x Running<br><span>' + hms(info.left) + '</span>'; cls = 'boost-btn running'; }
+                else if (info.st === 'queued') { html = mult + 'x Queued<br><span>starts ' + hms(info.startsIn) + '</span>'; cls = 'boost-btn queued'; }
+                else if (info.st === 'finished') { html = mult + 'x Done<br><span>+' + extra.toFixed(2) + ' KSH</span>'; cls = 'boost-btn finished'; }
+                else { html = mult + 'x Boost<br><span>+' + extra.toFixed(2) + ' KSH</span>'; cls = info.st === 'locked' ? 'boost-btn locked' : 'boost-btn'; }
+                const key = cls + '|' + html;
+                if (lastBoostKey[t] !== key) { btn.className = cls; btn.innerHTML = html; lastBoostKey[t] = key; }
+            }
+            const bs = $('boostStatus');
+            const runningTiers = Object.keys(bi).filter(t => bi[t].st === 'running');
+            const queT = Object.keys(bi).find(t => bi[t].st === 'queued');
+            let line = '';
+            if (runningTiers.length) {
+                const mults = runningTiers.map(t => S.config.boostMultipliers[t - 1] + 'x').join('+');
+                line = '🔥 ' + mults + ' Boost Active! ' + hms(bi[runningTiers[0]].left) + ' left';
+            }
+            if (queT) line += (line ? '\n' : '') + '⏳ ' + S.config.boostMultipliers[queT - 1] + 'x Boost starts in ' + hms(bi[queT].startsIn);
+            if (line) { bs.innerText = line; bs.style.whiteSpace = 'pre-line'; bs.style.display = 'block'; }
+            else { bs.style.display = 'none'; }
+
+            updateDailyBadge(now);
+        }
+
+        // ---------- Daily reward (Day 1 से 30, फिर दोबारा Day 1) ----------
+        function renderDaily() {
+            const cfg = S.config;
+            const now = serverNow();
+            const canClaim = now >= S.daily.nextMs;
+            let html = '';
+            for (let day = 1; day <= cfg.dailyDays; day++) {
+                const reward = day * cfg.dailyStep;
+                let cls = 'locked', badge = "<i class='fa-solid fa-lock'></i>";
+                if (day < S.daily.day) { cls = 'claimed'; badge = "<i class='fa-solid fa-check'></i>"; }
+                else if (day === S.daily.day) {
+                    if (canClaim) { cls = 'ready'; badge = 'CLAIM'; }
+                    else { cls = 'waiting'; badge = ''; }
+                }
+                html += '<div id="rewardDay' + day + '" class="reward-day ' + cls + '" onclick="claimDailyReward(' + day + ')">' +
+                        '<div class="day-label">Day ' + day + '</div>' +
+                        '<div class="reward-amt">' + reward + ' KSH</div>' +
+                        '<div class="status-badge" id="badgeDay' + day + '">' + badge + '</div></div>';
+            }
+            $('dailyGiftsContainer').innerHTML = html;
+            const cur = $('rewardDay' + S.daily.day);
+            if (cur) $('dailyGiftsContainer').scrollLeft = Math.max(0, cur.offsetLeft - 20);
+            updateDailyBadge(now);
+        }
+
+        function updateDailyBadge(now) {
+            const el = $('rewardDay' + S.daily.day);
+            if (!el) return;
+            const canClaim = now >= S.daily.nextMs;
+            const badge = $('badgeDay' + S.daily.day);
+            if (canClaim && !el.classList.contains('ready')) {
+                el.classList.remove('waiting', 'locked'); el.classList.add('ready'); badge.innerHTML = 'CLAIM';
+            } else if (!canClaim) {
+                if (!el.classList.contains('waiting')) { el.classList.remove('ready', 'locked'); el.classList.add('waiting'); }
+                badge.innerText = hms(S.daily.nextMs - now) + ' left';
+            }
+        }
+
+        // ---------- Profile ----------
+        function renderAvatar() {
+            const tu = (tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
+            const name = (S.profile.name || tu.first_name || 'K');
+            $('profileInitial').innerText = name.charAt(0).toUpperCase();
+            const src = S.profile.photo || tu.photo_url || '';
+            const img = $('profilePic');
+            if (src) {
+                img.onload = () => { img.style.display = 'block'; $('profileInitial').style.display = 'none'; };
+                img.onerror = () => { img.style.display = 'none'; $('profileInitial').style.display = 'flex'; };
+                if (img.src !== src) img.src = src;
+            } else {
+                img.style.display = 'none'; $('profileInitial').style.display = 'flex';
+            }
+        }
+
+        function renderLogin() {
+            const l = S.login;
+            const key = l.email + '|' + l.emailVerified;
+            if (key === lastLoginKey) return;
+            lastLoginKey = key;
+            const box = $('loginBox');
+            if (!l.email) {
+                box.innerHTML =
+                    '<div class="section-note">Create an email and password now. After you verify your email, you can log in on the Kushim Play Store app with the same email and password and see the same account, balance and history. Nothing is deleted.</div>' +
+                    '<div class="input-group"><label>Email Address</label><input type="email" id="loginEmail" placeholder="example@mail.com" maxlength="100" autocomplete="email"></div>' +
+                    '<div class="input-group"><label>Password (minimum 8 characters)</label><input type="password" id="loginPass" placeholder="Password" maxlength="64" autocomplete="new-password"></div>' +
+                    '<div class="input-group"><label>Confirm Password</label><input type="password" id="loginPass2" placeholder="Repeat password" maxlength="64" autocomplete="new-password"></div>' +
+                    '<div class="action-btn btn-save" onclick="createLogin()">Verify Email & Create Login</div>';
+            } else if (!l.emailVerified) {
+                box.innerHTML =
+                    '<div class="verify-wait"><i class="fa-solid fa-envelope"></i> Verification email sent to ' + esc(l.email) + '. Open the email, tap the link, then come back here.</div>' +
+                    '<div class="action-btn btn-save" style="margin-bottom:10px;" onclick="checkVerified()">I have verified</div>' +
+                    '<div class="action-btn btn-secondary" onclick="resendVerification()">Resend verification email</div>';
+            } else {
+                box.innerHTML =
+                    '<div class="verify-ok"><i class="fa-solid fa-circle-check"></i> Email verified: ' + esc(l.email) + '<br>Use this email and your password to log in on the Kushim app.</div>' +
+                    '<div class="action-btn btn-secondary" style="margin-bottom:0;" onclick="resetPassword()">Reset password by email</div>';
+            }
+        }
+
+        function resizeImage(file) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                const url = URL.createObjectURL(file);
+                img.onload = () => {
+                    const size = 256;
+                    const c = document.createElement('canvas');
+                    c.width = c.height = size;
+                    const s = Math.min(img.width, img.height);
+                    c.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, size, size);
+                    URL.revokeObjectURL(url);
+                    resolve(c.toDataURL('image/jpeg', 0.8));
+                };
+                img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read this image.')); };
+                img.src = url;
+            });
+        }
+
+        async function uploadPhoto(event) {
+            const file = event.target.files && event.target.files[0];
+            event.target.value = '';
+            if (!file) return;
+            const st = await busy('Saving photo...', async () => call('savePhoto', { photo: await resizeImage(file) }), 'Photo saved!');
+            if (st) applyState(st);
+        }
+
+        // ---------- Achievements: असली डेटा से बने बैज (कोई डमी नंबर नहीं) ----------
+        function renderAchievements(st) {
+            const list = [
+                { icon: 'fa-hammer', label: 'First Mining Claim', done: st.earnedMining > 0 },
+                { icon: 'fa-coins', label: '1,000 KSH Total Earned', done: st.totalEarned >= 1000 },
+                { icon: 'fa-sack-dollar', label: '10,000 KSH Total Earned', done: st.totalEarned >= 10000 },
+                { icon: 'fa-user-plus', label: 'First Referral', done: st.referralCount >= 1 },
+                { icon: 'fa-people-group', label: '5 Referrals', done: st.referralCount >= 5 },
+                { icon: 'fa-calendar-check', label: '10 Daily Claims', done: st.dailyClaimsTotal >= 10 },
+                { icon: 'fa-calendar-days', label: '30 Daily Claims', done: st.dailyClaimsTotal >= 30 },
+            ];
+            $('achList').innerHTML = list.map(a =>
+                '<div class="task-row"><span><i class="fa-solid ' + a.icon + '" style="color:' + (a.done ? '#fbbf24' : '#525252') + ';"></i> ' + a.label + '</span>' +
+                (a.done ? '<span style="color:#10b981;"><i class="fa-solid fa-circle-check"></i></span>' : '<span style="color:#525252;"><i class="fa-solid fa-lock"></i></span>') +
+                '</div>'
+            ).join('');
+        }
+
+        // ---------- स्थिति लागू करना ----------
+        function applyState(st) {
+            S = st;
+            offset = st.serverNow - Date.now();
+
+            $('refTabCount').innerText = st.referralCount;
+            $('refEarnedKSH').innerText = fmtInt(st.referralEarned);
+            $('refNote').innerText = 'You earn ' + st.config.referralReward + ' KSH when a friend opens the app using your invite link.';
+            $('bdRefCount').innerText = st.referralCount;
+            $('bdRef').innerText = fmt4(st.referralEarned) + ' KSH';
+            $('bdGift').innerText = fmt4(st.earnedDaily) + ' KSH';
+            $('bdVideo').innerText = fmt4(st.earnedVideo) + ' KSH';
+            $('bdMine').innerText = fmt4(st.earnedMining) + ' KSH';
+            $('bdTotal').innerText = fmt4(st.totalEarned) + ' KSH';
+            $('videoClaimBadge').innerText = '+' + st.config.videoClaimReward + ' KSH';
+            renderAchievements(st);
+            $('streakNote').innerText = '🔥 Current streak: Day ' + st.daily.day + ' of ' + st.config.dailyDays;
+            $('profileTgId').innerText = st.telegramId || '--';
+
+            if (st.locked > 0) {
+                $('displayLockedKSH').innerText = fmtInt(st.locked);
+                $('displayUnlockDate').innerText = fmtDate(st.unlockAtMs);
+                $('lockInputBox').style.display = 'none';
+                $('lockedStatusBox').style.display = 'flex';
+            } else {
+                $('lockInputBox').style.display = 'block';
+                $('lockedStatusBox').style.display = 'none';
+            }
+
+            if (!profileFilled) {
+                const tu = (tg.initDataUnsafe && tg.initDataUnsafe.user) || {};
+                $('profileName').value = st.profile.name || tu.first_name || '';
+                $('profileSurname').value = st.profile.surname || tu.last_name || '';
+                $('profileMobile').value = st.profile.mobile || '';
+                profileFilled = true;
+            }
+            renderAvatar();
+            renderLogin();
+
+            lastBoostKey = {};
+            renderDaily();
+            tick();
+        }
+
+        // ---------- Actions ----------
+        async function startMining() {
+            if (!S || S.mining) return;
+            if (!VIDEO_URL && !ADSGRAM_BLOCK_ID) {
+                return showCustomAlert('Video Not Set Up', 'The start-mining video is not set up in the app yet.', 'fa-solid fa-video');
+            }
+
+            // 1) सर्वर पर टिकट: वीडियो की लंबाई हर बार बढ़ती है (15s, फिर 20s, फिर 30s...)
+            const ticket = await busy('Preparing video...', () => call('startMiningVideo'));
+            if (!ticket) return;
+            const need = ticket.videoMs;
+            const startedAt = Date.now();
+
+            // 2) वीडियो
+            let ok = false;
+            try {
+                // ❤️ यहां वीडियो/ऐड चलता है — VIDEO_URL या ADSGRAM_BLOCK_ID जो भी भरा हो
+                ok = ADSGRAM_BLOCK_ID ? await watchAdsgram() : await watchOwnVideo(need / 1000, 'Watch to start mining');
+            } catch (e) { ok = false; }
+            if (!ok) return showCustomAlert('Video Not Completed', 'Watch the full video to start mining.', 'fa-solid fa-video');
+
+            const remaining = need - (Date.now() - startedAt);
+            if (remaining > 0) await sleep(remaining + 300);
+
+            // 3) माइनिंग शुरू (24 घंटे)
+            const st = await busy('Starting...', () => call('startMining'), 'Mining started!');
+            if (st) applyState(st);
+        }
+
+        // ---- Boost वीडियो: अपना .mp4 या Adsgram ----
+        function watchOwnVideo(needSeconds, titleText) {
+            return new Promise((resolve) => {
+                const need = needSeconds;
+                const modal = $('videoModal');
+                const v = $('boostVideo');
+                let watched = 0;
+                let finished = false;
+                let timer = null;
+
+                const finish = (ok) => {
+                    if (finished) return;
+                    finished = true;
+                    clearInterval(timer);
+                    videoCancel = null;
+                    v.onerror = null;
+                    v.pause();
+                    v.removeAttribute('src');
+                    v.load();
+                    modal.style.display = 'none';
+                    resolve(ok);
+                };
+                videoCancel = () => finish(false);
+
+                $('videoTitle').innerText = titleText || 'Watch to continue';
+                $('videoBar').style.width = '0%';
+                $('videoCount').innerText = 'Watch ' + need + ' seconds to continue';
+                v.onerror = () => { finish(false); showCustomAlert('Video Error', 'The video could not be loaded. Please try again later.', 'fa-solid fa-triangle-exclamation'); };
+                v.src = VIDEO_URL; // ❤️
+                v.loop = true;
+                v.muted = false;
+                modal.style.display = 'flex';
+                const p = v.play();
+                if (p && p.catch) p.catch(() => { v.muted = true; v.play().catch(() => {}); });
+
+                // सिर्फ़ असल में चलते वीडियो का समय गिना जाता है (रुका हुआ या आगे बढ़ाया हुआ नहीं)
+                timer = setInterval(() => {
+                    if (!v.paused && !v.ended && v.readyState >= 3 && document.visibilityState === 'visible') watched += 0.25;
+                    $('videoBar').style.width = Math.min(100, watched / need * 100) + '%';
+                    $('videoCount').innerText = watched >= need ? 'Done!' : Math.ceil(need - watched) + ' seconds left';
+                    if (watched >= need) finish(true);
+                }, 250);
+            });
+        }
+
+        function loadScript(src) {
+            return new Promise((resolve, reject) => {
+                const s = document.createElement('script');
+                s.src = src; s.onload = resolve; s.onerror = () => reject(new Error('Ad could not be loaded.'));
+                document.head.appendChild(s);
+            });
+        }
+
+        async function watchAdsgram() {
+            if (!window.Adsgram) await loadScript('https://sad.adsgram.ai/js/sad.min.js');
+            try {
+                const res = await window.Adsgram.init({ blockId: ADSGRAM_BLOCK_ID }).show();
+                return !!(res && res.done);
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function cancelVideo() { if (videoCancel) videoCancel(); }
+
+        async function activateBoost(tier) {
+            if (!S) return;
+            const info = boostInfo(serverNow())[tier];
+            if (info.st === 'locked') return showCustomAlert('Boost Locked', info.reason, 'fa-solid fa-lock');
+            if (info.st !== 'ready') return;
+            if (!VIDEO_URL && !ADSGRAM_BLOCK_ID) {
+                return showCustomAlert('Boost Video', 'The boost video is not set up in the app yet.', 'fa-solid fa-video');
+            }
+
+            // 1) सर्वर पर टिकट: वीडियो की लंबाई हर बार बढ़ती है (15s, फिर 20s, फिर 30s...)
+            const ticket = await busy('Preparing video...', () => call('startBoostVideo', { tier }));
+            if (!ticket) return;
+            const need = ticket.videoMs;
+            const startedAt = Date.now();
+
+            // 2) वीडियो (सर्वर से मिली लंबाई का)
+            let ok = false;
+            try {
+                // ❤️ यहां वीडियो/ऐड चलता है — VIDEO_URL या ADSGRAM_BLOCK_ID जो भी भरा हो
+                ok = ADSGRAM_BLOCK_ID ? await watchAdsgram() : await watchOwnVideo(need / 1000, 'Watch to unlock ' + S.config.boostMultipliers[tier - 1] + 'x Boost');
+            } catch (e) { ok = false; }
+            if (!ok) return showCustomAlert('Video Not Completed', 'Watch the full video to unlock the boost.', 'fa-solid fa-video');
+
+            // विज्ञापन सर्वर की माँगी गई लंबाई से छोटा हो तो बाकी समय रुककर
+            const remaining = need - (Date.now() - startedAt);
+            if (remaining > 0) await sleep(remaining + 300);
+
+            // 3) Boost चालू (पिछले Boost के बाद कतार में)
+            const st = await busy('Activating boost...', () => call('activateBoost', { tier }), 'Boost unlocked!');
+            if (st) applyState(st);
+        }
+
+        async function claimTokens() {
+            if (!S || !$('claimBtn').classList.contains('active')) return;
+            const st = await busy('Claiming...', () => call('claimMining'), 'Claimed!');
+            if (st) {
+                applyState(st);
+                const teamLine = st.teamBonus > 0 ? ' (includes +' + st.teamBonus + ' KSH Team Mining Bonus from ' + st.teamCount + ' active referral' + (st.teamCount > 1 ? 's' : '') + ')' : '';
+                showCustomAlert('Wallet Updated', '+' + fmt4(st.reward) + ' KSH added to your wallet.' + teamLine, 'fa-solid fa-wallet');
+            }
+        }
+
+        // ---------- Video Claim: वीडियो देखो, सीधे वॉलेट में जुड़े ----------
+        async function claimVideoBox() {
+            if (!S) return;
+            if (!VIDEO_URL && !ADSGRAM_BLOCK_ID) {
+                return showCustomAlert('Video Claim', 'The video is not set up in the app yet.', 'fa-solid fa-video');
+            }
+
+            const ticket = await busy('Preparing video...', () => call('startVideoClaim'));
+            if (!ticket) return;
+            const need = ticket.videoMs;
+            const startedAt = Date.now();
+
+            let ok = false;
+            try {
+                // ❤️ यहां वीडियो/ऐड चलता है — VIDEO_URL या ADSGRAM_BLOCK_ID जो भी भरा हो
+                ok = ADSGRAM_BLOCK_ID ? await watchAdsgram() : await watchOwnVideo(need / 1000, 'Watch to claim ' + S.config.videoClaimReward + ' KSH');
+            } catch (e) { ok = false; }
+            if (!ok) return showCustomAlert('Video Not Completed', 'Watch the full video to claim this reward.', 'fa-solid fa-video');
+
+            const remaining = need - (Date.now() - startedAt);
+            if (remaining > 0) await sleep(remaining + 300);
+
+            const st = await busy('Claiming...', () => call('claimVideoAd'), 'Claimed!');
+            if (st) {
+                applyState(st);
+                showCustomAlert('Reward Claimed', '+' + st.reward + ' KSH added to your wallet.', 'fa-solid fa-video');
+            }
+        }
+
+        async function claimDailyReward(day) {
+            const el = $('rewardDay' + day);
+            if (!S || !el || !el.classList.contains('ready')) return;
+            if (!VIDEO_URL && !ADSGRAM_BLOCK_ID) {
+                return showCustomAlert('Daily Video', 'The daily reward video is not set up in the app yet.', 'fa-solid fa-video');
+            }
+
+            // 1) सर्वर पर टिकट: वीडियो की लंबाई हर दिन बढ़ती है (15s, 20s, 25s, 30s, फिर दोहराव)
+            const ticket = await busy('Preparing video...', () => call('startDailyVideo'));
+            if (!ticket) return;
+            const need = ticket.videoMs;
+            const startedAt = Date.now();
+
+            // 2) वीडियो
+            let ok = false;
+            try {
+                // ❤️ यहां वीडियो/ऐड चलता है — VIDEO_URL या ADSGRAM_BLOCK_ID जो भी भरा हो
+                ok = ADSGRAM_BLOCK_ID ? await watchAdsgram() : await watchOwnVideo(need / 1000, 'Watch to claim Day ' + day + ' Reward');
+            } catch (e) { ok = false; }
+            if (!ok) return showCustomAlert('Video Not Completed', 'Watch the full video to claim this reward.', 'fa-solid fa-video');
+
+            const remaining = need - (Date.now() - startedAt);
+            if (remaining > 0) await sleep(remaining + 300);
+
+            // 3) Claim (यहीं Firebase में बैलेंस जुड़ता है)
+            const st = await busy('Claiming...', () => call('claimDaily'), 'Claimed!');
+            if (st) {
+                applyState(st);
+                showCustomAlert('Reward Claimed', 'You received ' + st.reward + ' KSH for Day ' + day + '.', 'fa-solid fa-gift');
+            }
+        }
+
+        async function lockTokens() {
+            const amt = Number($('lockAmount').value);
+            const date = $('lockDate').value;
+            if (!$('lockAmount').value || !date) return showCustomAlert('Missing Info', 'Please enter both amount and unlock date.', 'fa-solid fa-circle-exclamation');
+            if (!Number.isInteger(amt) || amt <= 0) return showCustomAlert('Invalid Amount', 'Enter a whole number greater than 0.', 'fa-solid fa-triangle-exclamation');
+            if (amt > S.balance) return showCustomAlert('Invalid Amount', 'You can lock only from your claimed balance (' + fmt4(S.balance) + ' KSH).', 'fa-solid fa-triangle-exclamation');
+            const st = await busy('Locking...', () => call('lockTokens', { amount: amt, date }), 'Locked!');
+            if (st) { $('lockAmount').value = ''; applyState(st); }
+        }
+
+        async function saveProfile() {
+            const data = {
+                name: $('profileName').value.trim(),
+                surname: $('profileSurname').value.trim(),
+                mobile: $('profileMobile').value.trim()
+            };
+            if (!data.name || !data.surname) {
+                return showCustomAlert('Incomplete Info', 'Please enter your first name and surname.', 'fa-solid fa-triangle-exclamation');
+            }
+            const st = await busy('Saving...', () => call('saveProfile', data), 'Saved!');
+            if (st) applyState(st);
+        }
+
+        // ---------- ईमेल + पासवर्ड लॉगिन (Play Store ऐप के लिए) ----------
+        async function createLogin() {
+            const email = $('loginEmail').value.trim();
+            const p1 = $('loginPass').value;
+            const p2 = $('loginPass2').value;
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return showCustomAlert('Invalid Email', 'Enter a valid email address.', 'fa-solid fa-triangle-exclamation');
+            if (p1.length < 8) return showCustomAlert('Weak Password', 'Password must be at least 8 characters.', 'fa-solid fa-triangle-exclamation');
+            if (p1 !== p2) return showCustomAlert('Password Mismatch', 'Both passwords must be the same.', 'fa-solid fa-triangle-exclamation');
+            const st = await busy('Creating login...', async () => {
+                await linkWithCredential(auth.currentUser, EmailAuthProvider.credential(email, p1));
+                await sendEmailVerification(auth.currentUser);
+                return call('getState');
+            }, 'Verification email sent!');
+            if (st) applyState(st);
+        }
+
+        async function resendVerification() {
+            const ok = await busy('Sending...', async () => { await sendEmailVerification(auth.currentUser); return true; }, 'Email sent!');
+            if (ok) showCustomAlert('Check Your Email', 'We sent the verification link again. Also check your spam folder.', 'fa-solid fa-envelope');
+        }
+
+        async function checkVerified() {
+            const st = await busy('Checking...', async () => {
+                await auth.currentUser.reload();
+                await auth.currentUser.getIdToken(true);
+                return call('getState');
+            });
+            if (!st) return;
+            applyState(st);
+            if (st.login.emailVerified) showCustomAlert('Email Verified', 'You can now log in on the Kushim app with this email and password.', 'fa-solid fa-circle-check');
+            else showCustomAlert('Not Verified Yet', 'Open the email we sent and tap the verification link first.', 'fa-solid fa-envelope');
+        }
+
+        async function resetPassword() {
+            const ok = await busy('Sending...', async () => { await sendPasswordResetEmail(auth, S.login.email); return true; }, 'Email sent!');
+            if (ok) showCustomAlert('Reset Link Sent', 'Check ' + S.login.email + ' to set a new password.', 'fa-solid fa-key');
+        }
+
+        // ---------- History ----------
+        async function openHistory() {
+            const listEl = $('historyList');
+            listEl.innerHTML = '<div style="color:#737373; text-align:center; padding:30px;">Loading...</div>';
+            $('historyModal').style.display = 'flex';
+            try {
+                const r = await call('getHistory');
+                if (!r.items.length) {
+                    listEl.innerHTML = '<div style="color:#737373; text-align:center; padding:30px;">No history yet. Start mining!</div>';
+                    return;
+                }
+                const labels = { mining: 'Mining Claimed', daily: 'Daily Reward', referral: 'Referral Bonus' };
+                let html = '';
+                r.items.forEach(rec => {
+                    html += '<div class="history-item"><div>' +
+                        '<div class="date"><i class="fa-regular fa-calendar"></i> ' + fmtDate(rec.at) + '<br><small>' + fmtTime(rec.at) + '</small></div>' +
+                        '<div class="status" style="color:#10b981;"><i class="fa-solid fa-circle-check"></i> ' + (labels[rec.type] || 'Reward') + '</div></div>' +
+                        '<div class="amount">+' + Number(rec.amount).toFixed(rec.amount % 1 ? 4 : 0) + ' KSH</div></div>';
+                });
+                listEl.innerHTML = html;
+            } catch (e) {
+                listEl.innerHTML = '<div style="color:#ef4444; text-align:center; padding:30px;">' + esc(cleanErr(e)) + '</div>';
+            }
+        }
+        function closeHistory() { $('historyModal').style.display = 'none'; }
+
+        // ---------- Leaderboard ----------
+        async function loadLeaderboard() {
+            if (!S || Date.now() - lastLbAt < 30000) return;
+            lastLbAt = Date.now();
+            try {
+                const r = await call('getLeaderboard');
+                if (!r.items.length) { $('lbList').innerHTML = '<div style="color:#737373; text-align:center; padding:12px;">No miners yet.</div>'; return; }
+                $('lbList').innerHTML = r.items.map(it =>
+                    '<div class="lb-row' + (it.me ? ' me' : '') + '"><span class="lb-rank">#' + it.rank + '</span><span class="lb-name">' + esc(it.name) + '</span><span class="lb-total">' + fmtInt(it.total) + ' KSH</span></div>'
+                ).join('');
+                const meIn = r.items.some(it => it.me);
+                const meEl = $('lbMe');
+                if (!meIn && r.myRank) {
+                    meEl.innerHTML = '<span class="lb-rank">#' + r.myRank + '</span><span class="lb-name">You</span><span class="lb-total">' + fmtInt(r.myTotal) + ' KSH</span>';
+                    meEl.style.display = 'flex';
+                } else { meEl.style.display = 'none'; }
+            } catch (e) {
+                lastLbAt = 0;
+                $('lbList').innerHTML = '<div style="color:#ef4444; text-align:center; padding:12px;">' + esc(cleanErr(e)) + '</div>';
+            }
+        }
+
+        // ---------- मेरी रैंक (सारे माइनर्स में) — असली Leaderboard डेटा से ----------
+        let lastRankAt = 0;
+        async function loadMyRank() {
+            if (!S || Date.now() - lastRankAt < 30000) return;
+            lastRankAt = Date.now();
+            try {
+                const r = await call('getLeaderboard');
+                $('profileRank').innerHTML = '<i class="fa-solid fa-ranking-star"></i> Your Rank: #' + r.myRank + ' of all miners';
+            } catch (e) {
+                lastRankAt = 0;
+            }
+        }
+
+        // ---------- मेरे रेफरल्स की सूची ----------
+        let lastRefAt = 0;
+        async function loadReferralList() {
+            if (!S || Date.now() - lastRefAt < 30000) return;
+            lastRefAt = Date.now();
+            try {
+                const r = await call('getReferralList');
+                if (!r.items.length) {
+                    $('referList').innerHTML = '<div style="color:#737373; text-align:center; padding:12px;">No referrals yet. Share your link!</div>';
+                    return;
+                }
+                $('referList').innerHTML = r.items.map(it =>
+                    '<div class="task-row"><span><i class="fa-solid fa-user"></i> ' + esc(it.name || 'Friend') + '</span><span style="color:#a3a3a3; font-size:0.85rem;">' + fmtDate(it.at) + '</span></div>'
+                ).join('');
+            } catch (e) {
+                lastRefAt = 0;
+                $('referList').innerHTML = '<div style="color:#ef4444; text-align:center; padding:12px;">' + esc(cleanErr(e)) + '</div>';
+            }
+        }
+
+        // ---------- Links, Share ----------
+        function getMyInviteUrl() {
+            if (!BOT_USERNAME) return null;
+            const base = APP_SHORT_NAME ? 'https://t.me/' + BOT_USERNAME + '/' + APP_SHORT_NAME : 'https://t.me/' + BOT_USERNAME;
+            return base + '?startapp=ref_' + S.telegramId;
+        }
+
+        function sendNativeInvite() {
+            const url = getMyInviteUrl();
+            if (!url) return showCustomAlert('Not Ready', 'Bot username is not set in the app yet.', 'fa-solid fa-triangle-exclamation');
+            const text = 'Join Kushim App and start mining KSH tokens with me on Telegram!';
+            if (navigator.share) {
+                // फोन का नीचे से खुलने वाला Share बॉक्स
+                navigator.share({ title: 'Kushim Token Mining', text, url }).catch(() => {});
+            } else {
+                tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent(text));
+            }
+        }
+
+        function copyInviteLink() {
+            const url = getMyInviteUrl();
+            if (!url) return showCustomAlert('Not Ready', 'Bot username is not set in the app yet.', 'fa-solid fa-triangle-exclamation');
+            const done = () => showCustomAlert('Link Copied', 'Your referral link has been copied!', 'fa-solid fa-copy');
+            const fallback = () => {
+                const ta = document.createElement('textarea');
+                ta.value = url; ta.style.position = 'fixed'; ta.style.opacity = '0';
+                document.body.appendChild(ta); ta.select();
+                try { document.execCommand('copy'); done(); } catch (e) { showCustomAlert('Your Link', url, 'fa-solid fa-link'); }
+                ta.remove();
+            };
+            if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(url).then(done).catch(fallback);
+            else fallback();
+        }
+
+        function openCommunityLink() {
+            if (tg.openTelegramLink) tg.openTelegramLink(COMMUNITY_LINK);
+            else window.open(COMMUNITY_LINK, '_blank');
+        }
+
+        function openBot() {
+            if (!BOT_USERNAME) return showCustomAlert('Telegram Bot', 'Bot link is not set in the app yet.', 'fa-solid fa-robot');
+            tg.openTelegramLink('https://t.me/' + BOT_USERNAME);
+        }
+
+        function openSupport() {
+            if (!SUPPORT_USERNAME) return showCustomAlert('Telegram Support', 'Support contact is not set in the app yet. Please use the community group.', 'fa-solid fa-headset');
+            tg.openTelegramLink('https://t.me/' + SUPPORT_USERNAME);
+        }
+
+        // ---------- HTML से बुलाए जाने वाले ----------
+        Object.assign(window, {
+            switchTab, showCustomAlert, closeCustomAlert, startMining, activateBoost, claimTokens,
+            claimDailyReward, claimVideoBox, lockTokens, saveProfile, uploadPhoto, createLogin, resendVerification,
+            checkVerified, resetPassword, openHistory, closeHistory, sendNativeInvite, copyInviteLink,
+            openCommunityLink, openBot, openSupport, cancelVideo
+        });
+
+        // ---------- शुरुआत ----------
+        async function init() {
+            tg.ready();
+            tg.expand();
+            try { tg.setHeaderColor('#000000'); } catch (e) {}
+
+            if (!tg.initData) {
+                $('splashSpinner').style.display = 'none';
+                $('splashText').innerText = 'Open inside Telegram';
+                return;
+            }
+
+            const d = new Date(Date.now() + 86400000);
+            $('lockDate').min = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+
+            try {
+                await setPersistence(auth, inMemoryPersistence);
+                const r = await call('authTelegram', { initData: tg.initData });
+                await signInWithCustomToken(auth, r.token);
+                applyState(await call('getState'));
+                $('splash').style.display = 'none';
+                setInterval(tick, 1000);
+            } catch (e) {
+                console.error('Login error:', e);
+                $('splashSpinner').style.display = 'none';
+                $('splashText').innerText = 'Could not connect: ' + cleanErr(e);
+                $('splashBtn').style.display = 'block';
+            }
+        }
+
+        // ऐप वापस खुलने पर सर्वर से ताज़ा स्थिति
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && S) {
+                try { applyState(await call('getState')); } catch (e) { console.error(e); }
+            }
+        });
+
+        init();
+    </script>
+</body>
+</html>
