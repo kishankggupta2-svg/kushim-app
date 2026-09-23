@@ -368,9 +368,14 @@
                 <div id="achList"></div>
             </div>
 
-            <div class="withdraw-standalone" onclick="showCustomAlert('Withdrawal', 'Withdrawals will be enabled after mainnet launch.', 'fa-solid fa-money-bill-transfer')">
-                <div class="withdraw-title"><i class="fa-solid fa-money-bill-wave"></i> Withdrawal</div>
-                <div class="withdraw-soon">Coming Soon</div>
+            <div class="wallet-card col" style="align-items:stretch;">
+                <div class="withdraw-title" style="justify-content:center; margin-bottom:4px;"><i class="fa-solid fa-money-bill-wave"></i> Withdrawal</div>
+                <div class="withdraw-soon" style="text-align:center; margin-bottom:12px;">Coming Soon</div>
+                <div class="input-group" style="margin-bottom:10px;">
+                    <label>Your BNB Chain (BEP-20) wallet address — save it now so payouts can go here once withdrawals launch</label>
+                    <input type="text" id="bnbAddress" placeholder="0x..." maxlength="42">
+                </div>
+                <div class="action-btn btn-save" style="margin-bottom:0;" onclick="saveWithdrawAddress()">Save Wallet Address</div>
             </div>
 
             <div class="wallet-card col">
@@ -889,6 +894,7 @@
                 $('profileName').value = st.profile.name || tu.first_name || '';
                 $('profileSurname').value = st.profile.surname || tu.last_name || '';
                 $('profileMobile').value = st.profile.mobile || '';
+                $('bnbAddress').value = st.profile.withdrawAddress || '';
                 profileFilled = true;
             }
             renderAvatar();
@@ -1119,6 +1125,18 @@
             if (st) applyState(st);
         }
 
+        async function saveWithdrawAddress() {
+            const addr = $('bnbAddress').value.trim();
+            if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+                return showCustomAlert('Invalid Address', 'Enter a valid BNB Chain (BEP-20) address: 0x followed by 40 characters.', 'fa-solid fa-triangle-exclamation');
+            }
+            const st = await busy('Saving...', () => call('saveWithdrawAddress', { address: addr }), 'Saved!');
+            if (st) {
+                applyState(st);
+                showCustomAlert('Address Saved', 'Your BNB Chain address is saved for future payouts.', 'fa-solid fa-wallet');
+            }
+        }
+
         // ---------- ईमेल + पासवर्ड लॉगिन (Play Store ऐप के लिए) ----------
         async function createLogin() {
             const email = $('loginEmail').value.trim();
@@ -1290,7 +1308,7 @@
         // ---------- HTML से बुलाए जाने वाले ----------
         Object.assign(window, {
             switchTab, showCustomAlert, closeCustomAlert, startMining, activateBoost, claimTokens,
-            claimDailyReward, claimVideoBox, lockTokens, saveProfile, uploadPhoto, createLogin, resendVerification,
+            claimDailyReward, claimVideoBox, lockTokens, saveProfile, saveWithdrawAddress, uploadPhoto, createLogin, resendVerification,
             checkVerified, resetPassword, openHistory, closeHistory, sendNativeInvite, copyInviteLink,
             openCommunityLink, openBot, openSupport, cancelVideo
         });
