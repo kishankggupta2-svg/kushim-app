@@ -213,6 +213,7 @@ async function buildState(uid) {
       surname: p.surname || "",
       mobile: p.mobile || "",
       photo: p.photo || "",
+      withdrawAddress: p.withdrawAddress || "",
     },
     login: {
       email: authRec && authRec.email ? authRec.email : "",
@@ -652,6 +653,18 @@ exports.savePhoto = onCall(OPT, async (request) => {
   return await buildState(uid);
 });
 
+// भविष्य में BNB Chain (BEP-20) पर असली टोकन भेजने के लिए यूज़र का वॉलेट पता सेव करना
+// (सिर्फ़ पता सेव होता है; असली Withdrawal अभी "Coming Soon" ही है)
+exports.saveWithdrawAddress = onCall(OPT, async (request) => {
+  const uid = await guard(request);
+  const address = String((request.data && request.data.address) || "").trim();
+  if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
+    throw new HttpsError("invalid-argument", "Enter a valid BNB Chain (BEP-20) address.");
+  }
+  await userRef(uid).update({ "profile.withdrawAddress": address });
+  return await buildState(uid);
+});
+
 // ---------- 9. History ----------
 exports.getHistory = onCall(OPT, async (request) => {
   const uid = await guard(request);
@@ -731,4 +744,3 @@ exports.notifyFinished = onSchedule(
     }
   }
 );
-
